@@ -1,140 +1,72 @@
 #include <WiFiNINA.h>
+#include <WebSocketsServer.h>
 #include "wifiPass.h"
 
-char ssid[] = WIFI_SSID;             //  your network SSID (name) between the " "
-char pass[] = WIFI_PASS;      // your network password between the " "
-int keyIndex = 0;                 // your network key Index number (needed only for WEP)
-int status = WL_IDLE_STATUS;      //connection status
-WiFiServer server(80);            //server socket
+char ssid[] = WIFI_SSID; 
+char pass[] = WIFI_PASS;
 
-WiFiClient client = server.available();
+unsigned int connectedCount = 0;
 
-int ledPin = 2;
+WebSocketsServer webSocket = WebSocketsServer(80);
 
 void setup() {
   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);
   while (!Serial);
   
-  enable_WiFi();
-  connect_WiFi();
-
-  server.begin();
+  connectToWifi();
   printWifiStatus();
 
+  startWebSocketServer();
 }
 
 void loop() {
-  client = server.available();
+  webSocket.loop();
+}
 
-  if (client) {
-    printWEB();
+void connectToWifi() {
+  Serial.print("Connecting to Wifi");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
   }
+  Serial.println("");
+  Serial.println("Connected!");
 }
 
 void printWifiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your board's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
-
-  Serial.print("To see this page in action, open a browser to http://");
-  Serial.println(ip);
+  Serial.print("Local ip: ");
+  Serial.println(WiFi.localIP());
 }
 
-void enable_WiFi() {
-  // check for the WiFi module:
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("Communication with WiFi module failed!");
-    // don't continue
-    while (true);
-  }
-
-  String fv = WiFi.firmwareVersion();
-  if (fv < "1.0.0") {
-    Serial.println("Please upgrade the firmware");
-  }
+void startWebSocketServer() {
+  webSocket.begin();
+  webSocket.onEvent(handleWebSocketEvent);
 }
 
-void connect_WiFi() {
-  // attempt to connect to Wifi network:
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
+void handleWebSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
+  switch (type) {
+    case WStype_DISCONNECTED:
+      connectedCount--;
 
-    // wait 10 seconds for connection:
-    delay(5000);
-  }
-}
+      Serial.println("Client disconnected!");
+      break;
 
-void printWEB() {
+    case WStype_CONNECTED:
+      connectedCount++;
+      
+      Serial.println("Client connected!");
+      break; 
 
-  if (client) {                             // if you get a client,
-    Serial.println("new client");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        if (c == '\n') {                    // if the byte is a newline character
+    case WStype_BIN:
+      Serial.print("[WSc] get binary length: ");
+      Serial.println(length);
 
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
+      webSocket.sendBIN([1], 1);
 
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-           
-            //create the buttons
-            client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-            client.print("Click <a href=\"/L\">here</a> turn the LED off<br><br>");
-            
-            int randomReading = analogRead(A1);
-            client.print("Random reading from analog pin: ");
-            client.print(randomReading);
-           
-            
-            
+      break;
 
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
-            break;
-          }
-          else {      // if you got a newline, then clear currentLine:
-            currentLine = "";
-          }
-        }
-        else if (c != '\r') {    // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-
-        if (currentLine.endsWith("GET /H")) {
-        digitalWrite(ledPin, HIGH);        
-        }
-        if (currentLine.endsWith("GET /L")) {
-        digitalWrite(ledPin, LOW);       
-        }
-
-      }
-    }
-    // close the connection:
-    client.stop();
-    Serial.println("client disconnected");
+    default:
+      break;
   }
 }
