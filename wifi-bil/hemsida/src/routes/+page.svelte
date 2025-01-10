@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ConnectionForm from './connectionForm.svelte';
 
-	let webSocket = $state<WebSocket | null>(null);
+	let ip = $state<string | null>(null);
 
 	let left = $state(false);
 	let right = $state(false);
@@ -12,50 +12,24 @@
 	let leftMotor = $state<MotorState>('Off');
 	let rightMotor = $state<MotorState>('Off');
 
-	function updateMotors() {
-		if (!webSocket) return;
+	async function updateMotors() {
+		if (!ip) return;
+		const response = await fetch(ip, {
+			headers: {
+				data: (leftMotor ? '1' : '0') + (rightMotor ? '1' : '0')
+			}
+		});
+		const json = await response.json();
 
-		let op = 0b00000000;
-		if (forward) {
-			op = 0b00111100;
-		} else if (left) {
-			op = 0b00101100;
-		} else if (right) {
-			op = 0b00111000;
-		}
-
-		const payload = new Uint8Array();
-		payload[0] = op;
-
-		console.log(payload);
-
-		webSocket.send(payload);
-	}
-
-	function onData(event: MessageEvent<Uint8Array>) {
-		const data = event.data[0];
-		const opCode = (data & 0b11000000) >> 6;
-
-		console.log('got data', data.toString(2), opCode);
-
-		if (opCode == 0b00000000) {
-			const leftMotorDirection = (data & 0b00100000) >> 5;
-			const leftMotorStatus = (data & 0b00010000) >> 4;
-
-			const rightMotorDirection = (data & 0b00001000) >> 3;
-			const rightMotorStatus = (data & 0b00000100) >> 2;
-
-			leftMotor = !leftMotorStatus ? 'Off' : leftMotorDirection ? 'Forward' : 'Reverse';
-			rightMotor = !rightMotorStatus ? 'Off' : rightMotorDirection ? 'Forward' : 'Reverse';
-		}
+		leftMotor = json.left == '1' ? 'Forward' : 'Off';
+		rightMotor = json.right == '1' ? 'Forward' : 'Off';
 	}
 </script>
 
-{#if !webSocket}
+{#if !ip}
 	<ConnectionForm
-		onConnect={(socket) => {
-			webSocket = socket;
-			webSocket.onmessage = onData;
+		onConnect={(_ip) => {
+			ip = _ip;
 		}}
 	/>
 {:else}

@@ -2,40 +2,37 @@
 	let {
 		onConnect
 	}: {
-		onConnect: (connection: WebSocket) => void;
+		onConnect: (ip: string) => void;
 	} = $props();
 
 	let connecting = $state(false);
 	let connected = $state(false);
 	let error = $state<string | null>(null);
-	let ip = $state<string>('127.');
+	let ip = $state<string>('192.');
 
-	function connect(event: SubmitEvent) {
+	async function connect(event: SubmitEvent) {
 		event.preventDefault();
 
 		connecting = true;
 
-		let webSocket: WebSocket;
+		console.log('Trying to connect!');
 
 		try {
-			webSocket = new WebSocket(ip);
+			const data = await fetch(`http://${ip}/`);
+			const dataJson = await data.json();
+			console.log(dataJson);
 		} catch (err) {
-			console.log('Error while connecting to socket!');
+			console.log('Error while connecting!');
 			console.error(err);
 
 			connected = false;
 			connecting = false;
-			error = 'Unable to connect to socket (check terminal for more info)';
+			error = 'Unable to connect (check terminal for more info)';
 
 			return;
 		}
 
-		webSocket.onopen = (event) => {
-			connected = true;
-			connecting = false;
-
-			onConnect(webSocket);
-		};
+		onConnect(ip);
 	}
 </script>
 
