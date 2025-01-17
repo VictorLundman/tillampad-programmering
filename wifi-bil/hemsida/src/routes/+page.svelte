@@ -7,22 +7,24 @@
 	let right = $state(false);
 	let forward = $state(false);
 
-	type MotorState = 'Forward' | 'Reverse' | 'Off';
-
-	let leftMotor = $state<MotorState>('Off');
-	let rightMotor = $state<MotorState>('Off');
-
 	async function updateMotors() {
 		if (!ip) return;
-		const response = await fetch(ip, {
+
+		const data = forward ? '11' : left ? '10' : right ? '01' : '00';
+
+		console.log('Setting', data);
+		const response = await fetch(`http://${ip}/`, {
 			headers: {
-				data: (leftMotor ? '1' : '0') + (rightMotor ? '1' : '0')
+				'x-motor-data': data
 			}
 		});
 		const json = await response.json();
 
-		leftMotor = json.left == '1' ? 'Forward' : 'Off';
-		rightMotor = json.right == '1' ? 'Forward' : 'Off';
+		console.log('response', json);
+
+		left = json.left && !json.right;
+		right = json.right && !json.left;
+		forward = json.left && json.right;
 	}
 </script>
 
@@ -34,7 +36,7 @@
 	/>
 {:else}
 	<button
-		style:color={right ? 'red' : 'black'}
+		style:color={left ? 'red' : 'black'}
 		onmousedown={() => {
 			left = true;
 			updateMotors();
@@ -45,7 +47,7 @@
 		}}>Left</button
 	>
 	<button
-		style:color={right ? 'red' : 'black'}
+		style:color={forward ? 'red' : 'black'}
 		onmousedown={() => {
 			forward = true;
 			updateMotors();
@@ -66,6 +68,4 @@
 			updateMotors();
 		}}>Right</button
 	>
-
-	<p>Left motor: {leftMotor} | Right motor: {rightMotor}</p>
 {/if}

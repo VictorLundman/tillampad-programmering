@@ -1,7 +1,3 @@
-void stopMotors()
+void setupMotors();
 
-void runMotorsForward()
-
-void runMotorsLeft()
-
-void runMotorsRight()
+void setMotors(bool left, bool right);

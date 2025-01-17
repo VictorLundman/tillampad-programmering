@@ -1,28 +1,19 @@
 #include <Arduino.h>
 
-#define MOTOR_RELAY_L 13
-#define MOTOR_RELAY_R 12
+#define MOTOR_RELAY_L 6
+#define MOTOR_RELAY_R 5
 
 static void setRelay(unsigned int pin, bool mode) {
   digitalWrite(pin, mode);
 }
 
-void stopMotors() {
-  setRelay(MOTOR_RELAY_L, LOW);
-  setRelay(MOTOR_RELAY_R, LOW);
+void setupMotors() {
+  pinMode(MOTOR_RELAY_L, OUTPUT);
+  pinMode(MOTOR_RELAY_R, OUTPUT);
 }
 
-void runMotorsForward() {
-  setRelay(MOTOR_RELAY_L, HIGH);
-  setRelay(MOTOR_RELAY_R, HIGH);
+void setMotors(bool left, bool right) {
+  setRelay(MOTOR_RELAY_L, left);
+  setRelay(MOTOR_RELAY_R, right);
 }
 
-void runMotorsLeft() {
-  setRelay(MOTOR_RELAY_L, LOW);
-  setRelay(MOTOR_RELAY_R, HIGH);
-}
-
-void runMotorsRight() {
-  setRelay(MOTOR_RELAY_L, HIGH);
-  setRelay(MOTOR_RELAY_R, LOW);
-}
