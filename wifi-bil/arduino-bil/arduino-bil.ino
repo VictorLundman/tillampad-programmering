@@ -6,27 +6,27 @@
 #include "motors.h"
 #include "oled.h"
 
-
+/** Light for the status LED */
 #define STATUS_PIN 7
-// #define DISPLAY_DIN_PIN 12
-// #define DISPLAY_CS_PIN 10
-// #define DISPLAY_CLK_PIN 13
 
+/** Loads wifi configuration from header file (that is excluded from git) */
 char ssid[] = WIFI_SSID;
 char pass[] = WIFI_PASS;
 
+/** Init the server */
 WiFiServer server(80);
 int status = WL_IDLE_STATUS;
 
+/** Init oled */
 U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // OLEDs without Reset of the Display
 
+/** Motos configuration */
 bool leftOn = false;
 bool rightOn = false;
+int requests = 0;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) {};
-  Serial.println("Here!");
   if (WiFi.status() == WL_NO_MODULE) {
     Serial.println("Communication with WiFi module failed!");
     while (true)
@@ -38,16 +38,18 @@ void setup() {
     Serial.println("Please upgrade the firmware");
   }
 
+  // Setup
   setupMotors();
-  setupStatusLed();
-  // setupDisplay();
 
+  setupStatusLed();
   setStatusLed(HIGH);
+
   setupOled(&u8x8);
   oledWriteLoading(&u8x8);
 
   connectToWifi();
   printWifiStatus();
+
 
   setStatusLed(LOW);
 
@@ -55,8 +57,13 @@ void setup() {
 }
 
 void loop() {
+  // Write info to led for debuging
+  u8x8.drawString(0, 6, String(millis()).c_str());
+  u8x8.drawString(0, 7, String(requests).c_str());
+
   WiFiClient client = server.available();
   if (client) {
+    requests++;
     setStatusLed(HIGH);
     Serial.println("new client");
     boolean currentLineIsBlank = true;
@@ -64,10 +71,6 @@ void loop() {
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
-        // Serial.write(c);
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the HTTP request has ended,
-        // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
           // send a standard HTTP response header
           client.println("HTTP/1.1 200 OK");
@@ -76,12 +79,6 @@ void loop() {
           client.println("Access-Control-Allow-Methods: *");
           client.println("Access-Control-Allow-Headers: *");
           client.println("Access-Control-Max-Age: 86400");
-          // if (isPreflight) {
-          //   client.println("Connection: keep-alive");
-          // } else {
-          //   client.println("Connection: close");
-          // }
-
           client.println("");
           client.print("{\"status\": \"success\", \"left\": ");
           client.print(leftOn);
@@ -91,6 +88,7 @@ void loop() {
           break;
         }
         if (c == '\n') {
+          // Handle data for the motos
           if (currentLine.startsWith("x-motor-data: ")) {
             leftOn = currentLine[14] == '1';
             rightOn = currentLine[15] == '1';
@@ -101,8 +99,6 @@ void loop() {
             Serial.print(leftOn);
             Serial.print(", ");
             Serial.println(rightOn);
-
-            setMotors(leftOn, rightOn);
           } 
 
           // you're starting a new line
@@ -116,15 +112,25 @@ void loop() {
       }
     }
 
+    setMotors(leftOn, rightOn);
+
     delay(100);
 
     // close the connection:
     client.stop();
+
+    // delay(100);
+
     setStatusLed(LOW);
     Serial.println("client disconnected");
   }
 }
 
+/** 
+ * Connect to the wifi. 
+ * Parameters: Void
+ * Returns: Void
+ */
 void connectToWifi() {
   Serial.print("Connecting to Wifi (");
   Serial.print(ssid);
@@ -132,44 +138,67 @@ void connectToWifi() {
   Serial.print(pass);
   Serial.print(")");
   int status;
-  WiFi.setTimeout(10 * 1000);
+
+  // Set timeout to 5 seconds
+  WiFi.setTimeout(5 * 1000);
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 10 seconds for connection:
-    delay(3000);
+    // Wait 5 seconds for connection:
+    delay(5000);
   }
 
   Serial.println("");
   Serial.println("Connected!");
 }
 
+/** 
+ * Convert ip adress to string. 
+ * Parameters: IPAddress* address
+ * Returns: String
+ */
 String toString(const IPAddress* address){
   return String() + (*address)[0] + "." + (*address)[1] + "." + (*address)[2] + "." + (*address)[3];
 }
 
-
+/** 
+ * Write wifi status to serial and oled. . 
+ * Parameters: Screen
+ * Returns: Void
+ */
 void printWifiStatus() {
   Serial.print("Local ip: ");
   Serial.println(WiFi.localIP());
 
   oledWriteIp(&u8x8, toString(&WiFi.localIP()));
-
-  // max7219.Clear();
 }
 
+/** 
+ * Start the web server. Run after connecting to wifi. 
+ * Parameters: Void
+ * Returns: Void
+ */
 void startServer() {
   Serial.println("Starting server");
   server.begin();
 }
 
+/** 
+ * Initialize the status light. 
+ * Parameters: Void
+ * Returns: Void
+ */
 void setupStatusLed() {
   pinMode(STATUS_PIN, OUTPUT);
 }
 
+/** 
+ * Set the oled. 
+ * Parameters: bool status
+ * Returns: Void
+ */
 void setStatusLed(bool status) {
   digitalWrite(STATUS_PIN, status);
 }
