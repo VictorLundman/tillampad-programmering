@@ -69,3 +69,8 @@
 		}}>Right</button
 	>
 {/if}
+
+<a
+	href="https://github.com/VictorLundman/tillampad-programmering/tree/main/wifi-bil"
+	target="_blank">Github</a
+>

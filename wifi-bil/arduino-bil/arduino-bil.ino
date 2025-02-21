@@ -1,3 +1,9 @@
+/**
+  * Name: Wifi Bil
+  * Author: Victor Lundman
+  * Description: A program for a car that gets its requests from WiFi on the local network. 
+  */
+
 #include <Wire.h>
 #include <SPI.h>
 #include <U8x8lib.h>
