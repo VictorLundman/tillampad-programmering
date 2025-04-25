@@ -1,6 +1,6 @@
 # Movie recommender
 
-En filmrekommenderare.
+En filmrekommenderare som använder colaborative filtering för att rekommendera nya filmer till användare. Baserat på de filmer användaren har recenserat och hur hen har recenserat dem hittar algoritmen x antal liknande användare. Sedan plockar algoritmen ut de filmerna med högst genomsnittligt betyg bland de liknande användarna. Av de filmerna rekomenderas användaren de som hen inte redan har betygsatt. 
 
 Skaffa data från movielens. Lägg i data mappen. Det som behövs är movies och ratings. 
 
